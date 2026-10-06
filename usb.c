@@ -792,7 +792,12 @@ static void rtw_usb_read_port_complete(struct urb *urb)
 		case -ECONNRESET:
 		case -ESHUTDOWN:
 		case -ENODEV:
-			/* Unlinked, or the device is gone: do not resubmit. */
+		case -EPIPE:
+			/*
+			 * Unlinked, or the device is gone: do not resubmit.
+			 * A stalled endpoint (-EPIPE) needs usb_clear_halt()
+			 * from process context first, which is not done yet.
+			 */
 			break;
 		default:
 			dev_warn_ratelimited(rtwdev->dev,
