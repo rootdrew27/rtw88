@@ -785,22 +785,20 @@ static void rtw_usb_read_port_complete(struct urb *urb)
 		rtw_usb_rx_resubmit(rtwusb, rxcb, GFP_ATOMIC);
 	} else {
 		skb_queue_tail(&rtwusb->rx_free_queue, skb);
+		rxcb->rx_skb = NULL;
 
 		switch (urb->status) {
-		case -EINVAL:
-		case -EPIPE:
-		case -ENODEV:
-		case -ESHUTDOWN:
 		case -ENOENT:
-		case -EPROTO:
-		case -EILSEQ:
-		case -ETIME:
-		case -ECOMM:
-		case -EOVERFLOW:
-		case -EINPROGRESS:
+		case -ECONNRESET:
+		case -ESHUTDOWN:
+		case -ENODEV:
+			/* Unlinked, or the device is gone: do not resubmit. */
 			break;
 		default:
-			rtw_err(rtwdev, "status %d\n", urb->status);
+			dev_warn_ratelimited(rtwdev->dev,
+					     "rx urb completed with status %d, resubmitting\n",
+					     urb->status);
+			queue_work(rtwusb->rxwq, &rtwusb->rx_urb_work);
 			break;
 		}
 	}
